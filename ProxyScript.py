@@ -3,6 +3,8 @@ import time
 import datetime
 import concurrent.futures
 import psutil
+import subprocess
+
 
 
 # Инициализация
@@ -11,7 +13,6 @@ def GetCurTime():
 
 INACTION_MAX_TIME = 5 * 60
 last_action = GetCurTime()
-is_proxy_enable = False
 
 # Слушатели
 def on_key(key):
@@ -36,25 +37,47 @@ def is_browser_work():
             return True
     return False
 
-# Основная часть
+# Основная часть 
+def changeProxyData(address, port, is_more, login, password):
+    command = f"networksetup -setwebproxy Wi-Fi {address} {port}"
+    if is_more:
+        command += f" on"
+        command += f" {login} {password}"
+
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+
+    if process.returncode != 0:
+        print(f"Произошла ошибка при обновлении прокси-сервера: {error.decode('utf-8')}")
+
+
+def SetProxyOff():
+    command = "networksetup -setwebproxystate Wi-Fi off"
+    subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
 def Proxy_EnabledCheck():
-    return is_proxy_enable
+    command = "networksetup -getwebproxy Wi-Fi"
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+
+    if process.returncode == 0 and "Enabled: Yes" in output.decode('utf-8'):
+        return True
+    else:
+        return False
+
 
 def DisableProxy():
     if not Proxy_EnabledCheck(): return
-    #####
-    global is_proxy_enable
-    is_proxy_enable = False
-    #####
     print('Disable proxy')
+    changeProxyData("\b", "0", True, "\b ", "0")
+    SetProxyOff()
+    
 
 def EnableProxy():
     if Proxy_EnabledCheck(): return
-    #####
-    global is_proxy_enable
-    is_proxy_enable = True
-    #####
     print('Enable proxy')
+    changeProxyData("proxy.example.com", 8080, True, "ya", "1232222222223214124124")
 
 def InactionCheck(last_action):
     return (GetCurTime() - last_action).total_seconds() > INACTION_MAX_TIME
